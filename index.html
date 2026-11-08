@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microbit Motion Monitor</title>
+<style>
+body {
+  font-family: Arial;
+  background: #101827;
+  color: white;
+  text-align: center;
+  padding: 20px;
+}
+h1 { color: #55c8ff; }
+.axis {
+  background: #1e293b;
+  padding: 18px;
+  margin: 12px auto;
+  border-radius: 12px;
+  max-width: 400px;
+}
+.value { font-size: 32px; font-weight: bold; }
+button {
+  background: #168bd2;
+  color: white;
+  border: 0;
+  padding: 15px 25px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+</style>
+</head>
+<body>
+
+<h1>MICROBIT MOTION</h1>
+<p id="status">Déconnecté</p>
+<button onclick="connect()">Connecter la micro:bit</button>
+
+<div class="axis">
+  <h2>Axe X</h2>
+  <div class="value" id="x">0 mg</div>
+</div>
+<div class="axis">
+  <h2>Axe Y</h2>
+  <div class="value" id="y">0 mg</div>
+</div>
+<div class="axis">
+  <h2>Axe Z</h2>
+  <div class="value" id="z">0 mg</div>
+</div>
+
+<p>Actualisation : <span id="rate">--</span></p>
+
+<script>
+const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+async function connect() {
+  try {
+    document.getElementById("status").textContent =
+      "Recherche Bluetooth...";
+
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [SERVICE]
+    });
+
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE);
+    const characteristic =
+      await service.getCharacteristic(TX);
+
+    await characteristic.startNotifications();
+
+    characteristic.addEventListener(
+      "characteristicvaluechanged", event => {
+        const data = new TextDecoder().decode(
+          event.target.value
+        ).trim();
+
+        const values = data.split(",");
+
+        if (values.length === 3) {
+          document.getElementById("x").textContent =
+            values[0] + " mg";
+          document.getElementById("y").textContent =
+            values[1] + " mg";
+          document.getElementById("z").textContent =
+            values[2] + " mg";
+
+          document.getElementById("rate").textContent =
+            "En direct";
+        }
+      }
+    );
+
+    document.getElementById("status").textContent =
+      "Connecté : " + device.name;
+
+  } catch (error) {
+    document.getElementById("status").textContent =
+      "Erreur : " + error.message;
+  }
+}
+</script>
+</body>
+</html>
